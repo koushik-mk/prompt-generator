@@ -17,7 +17,6 @@ from prompt_engine import (
     DEFAULT_GENERATION_PARAMS,
     build_messages,
 )
-
 MODEL_ALLOWLIST = {
     # Friendly id -> verified Workers AI model id.
     # `@cf/meta/llama-3.1-8b-instruct` is no longer listed in the Workers AI
@@ -28,6 +27,27 @@ MODEL_ALLOWLIST = {
 }
 
 MAX_ATTEMPTS = 2  # one bounded retry, only for transient failures
+MAX_LEAK_REGENERATIONS = 1  # one corrective retry when the model leaked the answer
+
+# Markers indicating the model wrote the deliverable itself (or added
+# commentary) instead of returning only the instruction prompt. Observed
+# failure mode of small models (e.g. Llama 3.2 1B). Kept deliberately
+# conservative to avoid false positives on legitimate prompts.
+LEAK_MARKERS = (
+    "here is the transformed prompt",
+    "here is the generated prompt",
+    "here is your prompt",
+    "here is a prompt",
+    "here's the",
+    "i am writing to",
+    "i hope this email finds you well",
+    "dear [",
+    "dear customer",
+    "dear sir",
+    "dear madam",
+    "sincerely,\n[",
+    "regards,\n[",
+)
 
 QUOTA_MESSAGE = (
     "The AI usage limit has been reached. "
@@ -140,6 +160,17 @@ def extract_prompt(ai_response) -> str:
     return prompt
 
 
+def looks_like_leaked_answer(text: str) -> bool:
+    """Detect model output that executed the scenario instead of prompting.
+
+    A generated prompt must contain instructions for another AI. Outputs
+    that greet a recipient, draft the email, or preface themselves with
+    'Here is the ...' violate the core contract and are rejected.
+    """
+    lowered = text.lower()
+    return any(marker in lowered for marker in LEAK_MARKERS)
+
+
 def _to_js(payload: dict):
     """Convert nested Python structures to plain JS objects in the runtime.
 
@@ -158,34 +189,54 @@ def _to_js(payload: dict):
 async def generate_prompt(ai_binding, model_key: str, scenario: str) -> str:
     """Resolve the model, invoke Workers AI, and return the generated prompt.
 
-    Retries at most once, and only for transient failures. Quota exhaustion
-    and provider errors are never retried.
+    Failure budget (all bounded):
+    - transient provider failures: at most one retry;
+    - leaked answers (model wrote the deliverable itself): at most one
+      corrective regeneration with an explicit correction instruction;
+    - quota exhaustion and provider errors: never retried.
+
+    A persistent leak is rejected as an unusable AI response (502) so a
+    task answer is never shown to the user as a "generated prompt".
     """
     model_id = resolve_model_id(model_key)
-    payload = {
-        "messages": build_messages(scenario),
-        **DEFAULT_GENERATION_PARAMS,
-    }
 
-    last_kind = None
-    last_exc = None
-    for attempt in range(MAX_ATTEMPTS):
+    transient_attempts = 0
+    leak_regenerations = 0
+    corrective = False
+
+    while True:
+        payload = {
+            "messages": build_messages(scenario, corrective=corrective),
+            **DEFAULT_GENERATION_PARAMS,
+        }
         try:
             ai_response = await ai_binding.run(model_id, _to_js(payload))
-            return extract_prompt(ai_response)
-        except AiServiceError:
-            raise
-        except UnsupportedModelError:
+            prompt = extract_prompt(ai_response)
+        except (AiServiceError, UnsupportedModelError):
             raise
         except Exception as exc:  # noqa: BLE001 - classify every binding failure
-            last_kind = classify_ai_exception(exc)
-            last_exc = exc
-            if last_kind == "transient" and attempt + 1 < MAX_ATTEMPTS:
+            kind = classify_ai_exception(exc)
+            if kind == "transient" and transient_attempts < MAX_ATTEMPTS - 1:
+                transient_attempts += 1
                 continue
-            break
+            if kind == "quota":
+                raise AiServiceError(
+                    "AI_QUOTA_EXCEEDED", 429, QUOTA_MESSAGE
+                ) from exc
+            if kind == "transient":
+                raise AiServiceError(
+                    "AI_UNAVAILABLE", 503, TEMPORARY_MESSAGE
+                ) from exc
+            raise AiServiceError(
+                "AI_PROVIDER_ERROR", 502, PROVIDER_ERROR_MESSAGE
+            ) from exc
 
-    if last_kind == "quota":
-        raise AiServiceError("AI_QUOTA_EXCEEDED", 429, QUOTA_MESSAGE) from last_exc
-    if last_kind == "transient":
-        raise AiServiceError("AI_UNAVAILABLE", 503, TEMPORARY_MESSAGE) from last_exc
-    raise AiServiceError("AI_PROVIDER_ERROR", 502, PROVIDER_ERROR_MESSAGE) from last_exc
+        if looks_like_leaked_answer(prompt):
+            if leak_regenerations < MAX_LEAK_REGENERATIONS:
+                leak_regenerations += 1
+                corrective = True
+                continue
+            raise AiServiceError(
+                "INVALID_AI_RESPONSE", 502, MALFORMED_RESPONSE_MESSAGE
+            )
+        return prompt

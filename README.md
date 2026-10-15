@@ -350,6 +350,12 @@ Additional engineering decisions:
   - **Everything else** → `502`, without leaking internals.
 - **Bounded retry:** transient failures are retried exactly once; quota and
   provider errors are never retried.
+- **Leaked-answer guard:** small models (observed with Llama 3.2 1B) sometimes
+  write the deliverable itself instead of the prompt. `ai_service` detects
+  leaked outputs (email greetings/bodies, "Here is the ... prompt" prefaces)
+  via conservative markers, regenerates **once** with an explicit corrective
+  instruction, and rejects a persistent leak as `502 INVALID_AI_RESPONSE` —
+  a task answer is never shown to the user as a "generated prompt".
 - Model output is validated (non-empty string) → otherwise `502
   INVALID_AI_RESPONSE`.
 - Clients never receive stack traces, secrets, or scenario content in errors;
@@ -474,7 +480,11 @@ above, followed by verifying the printed URL end-to-end with both models.
   buys precise routing (405/404 JSON semantics for the API).
 - No streaming: the API returns the complete generated prompt, which keeps the
   contract simple and matches the copy-to-clipboard UX.
-- The 1B model is faster/cheaper but produces less polished prompts than the 8B
-  model; the UI labels make this trade-off explicit.
+- The 1B model is faster/cheaper but complies less reliably with the
+  "generate a prompt, never the answer" rule (verified in local testing: it
+  leaked drafted emails despite prompt hardening). Mitigations: strengthened
+  system prompt, a post-scenario reminder, and a server-side leak guard with
+  one corrective regeneration. Residual leaks are rejected with a clear error
+  rather than displayed; the 8B model is the recommended default.
 - `pywrangler` requires uv ≥ 0.12.3 (it refuses older versions with a clear
   error message).

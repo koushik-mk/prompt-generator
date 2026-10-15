@@ -61,6 +61,18 @@ def test_injection_attempt_is_confined_to_user_message():
     assert "<scenario>" in messages[1]["content"]
 
 
+def test_system_prompt_forbids_drafting_the_deliverable():
+    assert "draft, sample, or partial execution" in SYSTEM_PROMPT
+
+
+def test_user_message_ends_with_generate_prompt_reminder():
+    user_message = build_user_message("Write an email about a delay.")
+    assert user_message.rstrip().endswith("Return only the generated prompt.")
+    assert "never the completed task itself" in user_message
+    # The reminder must come after the scenario block (recency effect).
+    assert user_message.index("</scenario>") < user_message.index("Reminder:")
+
+
 def test_scenario_length_limit_is_documented_constant():
     assert MAX_SCENARIO_LENGTH == 5000
     assert "5000" in json.dumps({"limit": MAX_SCENARIO_LENGTH})

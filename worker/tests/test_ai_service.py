@@ -7,10 +7,17 @@ from ai_service import (
     classify_ai_exception,
     extract_prompt,
     generate_prompt,
+    looks_like_leaked_answer,
     resolve_model_id,
 )
 from helpers import FakeAIBinding
-from prompt_engine import DEFAULT_GENERATION_PARAMS, MAX_OUTPUT_TOKENS, SYSTEM_PROMPT
+from prompt_engine import (
+    CORRECTIVE_SUFFIX,
+    DEFAULT_GENERATION_PARAMS,
+    MAX_OUTPUT_TOKENS,
+    SYSTEM_PROMPT,
+    build_messages,
+)
 
 
 class JsLikeResponse:
@@ -168,3 +175,84 @@ async def test_generate_prompt_provider_error_is_not_retried():
     assert exc_info.value.status == 502
     assert exc_info.value.code == "AI_PROVIDER_ERROR"
     assert len(ai.calls) == 1
+
+
+# --- Leaked-answer detection (small-model failure mode) -----------------------
+
+OBSERVED_1B_LEAK = """**Role:** Email Writer
+**Task:** Generate an email apologizing for a delayed product shipment
+
+Here is the generated prompt:
+
+"Dear [Customer],
+
+I am writing to apologize for the delay in shipping your product. Please be
+assured that your order will be delivered within the next [insert timeframe].
+
+Best regards,
+[AI System]"
+"""
+
+CLEAN_8B_PROMPT = """Role: Act as an experienced customer support specialist.
+
+Context: A customer is waiting for a delayed shipment.
+
+Task: Write a professional apology email. Use placeholders such as
+[Customer Name] and [Product Name] for missing details.
+
+Constraints: Apologetic and empathetic tone; no promotional content.
+
+Output Format: A well-structured plain-text email."""
+
+
+def test_detects_observed_leaked_answer():
+    assert looks_like_leaked_answer(OBSERVED_1B_LEAK)
+
+
+def test_detects_email_body_markers():
+    for leaked in (
+        "Dear [Customer Name], I am writing to ...",
+        "I hope this email finds you well. ...",
+        "Here is the transformed prompt: ...",
+    ):
+        assert looks_like_leaked_answer(leaked)
+
+
+def test_clean_prompt_is_not_flagged():
+    assert not looks_like_leaked_answer(CLEAN_8B_PROMPT)
+
+
+async def test_leaked_answer_triggers_one_corrective_regeneration():
+    ai = FakeAIBinding(
+        responses=[
+            {"response": OBSERVED_1B_LEAK},
+            {"response": CLEAN_8B_PROMPT},
+        ]
+    )
+    result = await generate_prompt(ai, "llama1b", "Write an apology email.")
+    assert result == CLEAN_8B_PROMPT
+    assert len(ai.calls) == 2
+    # First call: plain user message. Second call: corrective instruction added.
+    first_user = ai.calls[0]["payload"]["messages"][1]["content"]
+    second_user = ai.calls[1]["payload"]["messages"][1]["content"]
+    assert CORRECTIVE_SUFFIX not in first_user
+    assert second_user.endswith(CORRECTIVE_SUFFIX)
+    # System prompt never changes between attempts.
+    assert ai.calls[0]["payload"]["messages"][0]["content"] == SYSTEM_PROMPT
+    assert ai.calls[1]["payload"]["messages"][0]["content"] == SYSTEM_PROMPT
+
+
+async def test_persistent_leak_is_rejected_as_unusable_response():
+    ai = FakeAIBinding(responses={"response": OBSERVED_1B_LEAK})
+    with pytest.raises(AiServiceError) as exc_info:
+        await generate_prompt(ai, "llama1b", "Write an apology email.")
+    assert exc_info.value.status == 502
+    assert exc_info.value.code == "INVALID_AI_RESPONSE"
+    assert len(ai.calls) == 2  # initial + one corrective regeneration, no more
+
+
+def test_build_messages_corrective_variant():
+    plain = build_messages("Write an email.")
+    corrective = build_messages("Write an email.", corrective=True)
+    assert plain[1]["content"] == corrective[1]["content"].removesuffix(CORRECTIVE_SUFFIX)
+    assert corrective[0]["content"] == SYSTEM_PROMPT
