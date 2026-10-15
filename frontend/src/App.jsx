@@ -54,6 +54,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <span className="badge">Cloudflare Workers AI</span>
         <h1>Prompt Generator</h1>
         <p>
           Describe your scenario and pick a model. You will get a structured,
