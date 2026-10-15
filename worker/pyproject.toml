@@ -1,0 +1,20 @@
+[project]
+name = "prompt-generator-worker"
+version = "1.0.0"
+description = "Prompt Generator API - Cloudflare Python Worker backed by Workers AI"
+requires-python = ">=3.12"
+dependencies = [
+    "workers-runtime-sdk",
+]
+
+[dependency-groups]
+dev = [
+    "workers-py",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"

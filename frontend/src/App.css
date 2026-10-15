@@ -1,0 +1,207 @@
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.app-header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.9rem;
+}
+
+.app-header p {
+  margin: 0 0 1.75rem;
+  color: var(--muted);
+}
+
+.prompt-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field select,
+.field textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  width: 100%;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.field select:disabled,
+.field textarea:disabled {
+  background: #eef0f5;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.help-text {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.counter {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.field-error {
+  margin: 0;
+  color: var(--error-text);
+  font-size: 0.9rem;
+}
+
+.generate-button,
+.copy-button {
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0.65rem 1.25rem;
+  background: var(--accent);
+  color: #fff;
+}
+
+.generate-button:hover:not(:disabled),
+.copy-button:hover {
+  background: var(--accent-hover);
+}
+
+.generate-button:disabled {
+  background: #b8bed4;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-message {
+  margin-top: 1.25rem;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+}
+
+.generated-prompt {
+  margin-top: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.generated-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.generated-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.generated-model {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.model-id {
+  font-family: ui-monospace, monospace;
+}
+
+.prompt-output {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9rem;
+  background: #f3f4f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.copy-status {
+  margin-top: 0.6rem;
+  min-height: 1.4em;
+  font-size: 0.9rem;
+  color: var(--success-text);
+}
+
+.app-footer {
+  margin-top: 2.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 1.25rem 0.9rem 2rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .generated-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .copy-button {
+    width: 100%;
+  }
+}
