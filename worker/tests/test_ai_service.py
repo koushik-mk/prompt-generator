@@ -64,6 +64,17 @@ Task: Draft the application email.
 Note: This prompt preserves the original scenario's intent, deliverable,
 audience, and factual details while providing a well-formatted email."""
 
+OBSERVED_GREETING_LEAK = """Dear Hiring Manager,
+
+I am writing to apply for the Marketing Manager position at XYZ
+Corporation. With over five years of experience, I believe I am a
+strong fit for this role.
+
+Thank you for your consideration.
+
+Best regards,
+[Applicant Name]"""
+
 OBSERVED_LEAK_WITH_NOTE = (
     "Role: Email Writer\n"
     "Task: Generate an apology email.\n\n"
@@ -161,6 +172,52 @@ def test_classify_flags_self_referential_note():
 
 def test_classify_flags_leak_with_trailing_note():
     assert classify_unusable_output(OBSERVED_LEAK_WITH_NOTE) == "leak"
+
+
+def test_classify_flags_completed_email_opening_with_greeting():
+    # A leaked email with no subject line, labels, or note: the greeting
+    # itself is the giveaway.
+    assert classify_unusable_output(OBSERVED_GREETING_LEAK) == "leak"
+
+
+def test_classify_flags_output_opening_with_casual_greeting():
+    assert (
+        classify_unusable_output("Hi Team,\n\nPlease review the attached update.")
+        == "leak"
+    )
+    assert (
+        classify_unusable_output("Hello John,\n\nI am following up on my application.")
+        == "leak"
+    )
+
+
+def test_legitimate_prompt_instructing_greeting_is_kept():
+    # The greeting rule is anchored to the start of the output, so a
+    # prompt that merely tells the target AI to open with a greeting
+    # must not be rejected.
+    legitimate = (
+        "Role: Customer Support Specialist\n\n"
+        "Task: Draft an apology email to a customer.\n\n"
+        'Constraints: Begin the email with "Dear Hiring Manager," style '
+        "greeting appropriate to the recipient.\n\n"
+        "Output Format: Subject line, greeting, body, signature."
+    )
+    assert classify_unusable_output(legitimate) is None
+
+
+def test_generic_or_invented_constraints_are_not_phrase_rejected():
+    # Weak prompts with generic instructions or constraints the scenario
+    # never mentioned are a quality problem, not a detectable leak.
+    # Phrase rules deliberately do not reject them to avoid blocking
+    # valid prompts; they are handled by the model and corrective loop.
+    weak = (
+        "Role: Professional Writer\n\n"
+        "Context: General communication task.\n\n"
+        "Task: Write a message to the team about the update.\n\n"
+        "Constraints: Keep it under 150 words and mention [Product Name].\n\n"
+        "Output Format: Plain text."
+    )
+    assert classify_unusable_output(weak) is None
 
 
 def test_classify_flags_leading_refusal():
@@ -323,6 +380,17 @@ async def test_leaked_answer_triggers_corrective_regeneration():
     assert CORRECTIVE_SUFFIXES["leak"] not in first_user
     assert second_user.endswith(CORRECTIVE_SUFFIXES["leak"])
     assert ai.calls[0]["payload"]["messages"][0]["content"] == SYSTEM_PROMPT
+
+
+async def test_greeting_leak_triggers_corrective_regeneration():
+    ai = FakeAIBinding(
+        responses=[{"response": OBSERVED_GREETING_LEAK}, {"response": CLEAN_PROMPT}]
+    )
+    result = await generate_prompt(ai, "llama1b", "Write an email applying for a job.")
+    assert result == CLEAN_PROMPT
+    assert len(ai.calls) == 2
+    second_user = ai.calls[1]["payload"]["messages"][1]["content"]
+    assert second_user.endswith(CORRECTIVE_SUFFIXES["leak"])
 
 
 async def test_persistent_leak_is_rejected():

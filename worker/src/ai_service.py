@@ -56,9 +56,12 @@ COMMENTARY_PATTERN = re.compile(
 )
 
 LEAK_PATTERNS = (
-    # Output that starts with an email subject line is the deliverable,
-    # not a prompt for another AI.
+    # Output that opens with an email subject or greeting is the
+    # deliverable itself. A generated prompt opens with a Role, Task, or
+    # Context heading instead. Anchored at the start of the output so a
+    # legitimate prompt that merely mentions a greeting is not rejected.
     re.compile(r"^\s*subject\s*:", re.IGNORECASE),
+    re.compile(r"^\s*(?:dear|hello|hi)\b", re.IGNORECASE),
     re.compile(r"generated prompt\s*:", re.IGNORECASE),
     re.compile(r"example (?:response|output|email)\s*:", re.IGNORECASE),
     re.compile(r"i hope this email finds you well", re.IGNORECASE),
