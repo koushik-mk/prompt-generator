@@ -131,6 +131,10 @@ uv run pywrangler dev
 
 The Worker runs at `http://localhost:8787`.
 
+`pywrangler` is the Python Workers launcher for the Wrangler CLI: it
+runs the same local `wrangler dev` development server with the Python
+runtime enabled.
+
 For local development, configure the frontend API base URL and allowed
 origin as required by the project configuration.
 
@@ -268,11 +272,27 @@ The application separates the scenario from the system instructions and
 identifies scenario content as untrusted input. This helps reduce the
 risk of user-provided text overriding the intended behavior.
 
-Output checks handle selected failure cases, such as conversational
-responses, refusals, or repetitive text. When appropriate, the service
-makes a bounded corrective generation attempt. These checks address
-known response-quality issues but do not guarantee that every generated
-prompt will be correct.
+This structure was chosen for small instruction-tuned models. The rules
+are numbered and strongly worded because 1B and 8B models follow
+explicit prohibitions more reliably than long prose. The most important
+rules are negative ones: the model must never perform the task itself
+and must never draft the deliverable, because the most common failure
+for models of this size is to answer the scenario directly instead of
+writing a prompt. The scenario is wrapped in `USER SCENARIO START` and
+`USER SCENARIO END` markers and treated as data so that embedded
+instructions cannot override the system rules. Output validation acts as
+a final safety net.
+
+Output checks handle selected failure cases, such as deliverable
+leakage, conversational refusals, or repetitive text. When appropriate,
+the service makes one bounded corrective generation attempt that appends
+a targeted correction to the user message. These checks address known
+response-quality issues but do not guarantee that every generated prompt
+will be correct.
+
+Smaller models such as the 1B option can still invent plausible details
+that the scenario did not provide; the 8B model follows the constraints
+more reliably.
 
 ## Error Handling and Resource Usage
 
@@ -308,12 +328,8 @@ uv run pytest -q
 The backend test suite is designed to run against a mocked AI binding so
 application logic is tested without consuming inference quota. It targets
 model selection, request validation, error classification,
-prompt-injection handling, and output validation.
-
-Note: the worker test files currently reference helpers from a previous
-pipeline implementation (for example `strip_commentary` and the
-`<scenario>` marker) and will fail until they are realigned with the
-rewritten modules in `worker/src`.
+prompt-injection handling, and output validation. The full suite runs
+offline and is expected to pass without network access.
 
 ### Frontend
 

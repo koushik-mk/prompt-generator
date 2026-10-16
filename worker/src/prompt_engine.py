@@ -94,7 +94,11 @@ If requirements materially conflict, ask for clarification.
 
 6. FORMAT THE GENERATED PROMPT
 Return only the generated prompt, with no introduction, explanation,
-self-evaluation, or closing commentary.
+self-evaluation, closing commentary, or any other meta-text.
+
+Never label or frame the output. Do not begin it with prefixes such as
+"Generated Prompt:" or "Example Response:" and do not include a sample
+response of any kind.
 
 Use clear headings when they improve readability. Suitable headings
 include Role, Context, Task, Constraints, Tone, and Output Format.
