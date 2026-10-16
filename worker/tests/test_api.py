@@ -217,8 +217,8 @@ async def test_injection_attempt_does_not_alter_system_prompt():
     assert messages[0]["content"] == SYSTEM_PROMPT
     user_content = messages[1]["content"]
     assert injection in user_content
-    assert "<scenario>" in user_content
-    assert "untrusted user-provided data" in user_content
+    assert "USER SCENARIO START" in user_content
+    assert "untrusted input" in user_content
 
 
 async def test_error_responses_never_leak_stack_traces():

@@ -55,6 +55,16 @@ COMMENTARY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+LEAK_PATTERNS = (
+    # Output that starts with an email subject line is the deliverable,
+    # not a prompt for another AI.
+    re.compile(r"^\s*subject\s*:", re.IGNORECASE),
+    re.compile(r"generated prompt\s*:", re.IGNORECASE),
+    re.compile(r"example (?:response|output|email)\s*:", re.IGNORECASE),
+    re.compile(r"i hope this email finds you well", re.IGNORECASE),
+    re.compile(r"^note:\s*this prompt\b", re.IGNORECASE | re.MULTILINE),
+)
+
 
 class AiServiceError(Exception):
     """AI error with an HTTP status and a safe client-facing message."""
@@ -152,6 +162,9 @@ def classify_unusable_output(text: str) -> str | None:
 
     if not stripped:
         return "empty"
+
+    if any(pattern.search(stripped) for pattern in LEAK_PATTERNS):
+        return "leak"
 
     # Detect conversational refusals, not refusal language inside a prompt.
     if REFUSAL_PATTERN.match(stripped):
