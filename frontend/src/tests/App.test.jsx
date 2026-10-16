@@ -74,7 +74,6 @@ describe('App', () => {
     await user.type(screen.getByLabelText(/describe your scenario/i), SCENARIO)
     await user.click(screen.getByRole('button', { name: /generate prompt/i }))
 
-    // Loading state visible, controls disabled.
     expect(await screen.findByText(/generating your prompt/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /generating/i })).toBeDisabled()
     expect(screen.getByLabelText(/describe your scenario/i)).toBeDisabled()
@@ -92,7 +91,6 @@ describe('App', () => {
     )
     expect(screen.queryByText(/generating your prompt/i)).not.toBeInTheDocument()
 
-    // The request carried the selected model and scenario.
     const [url, options] = fetchMock.mock.calls[0]
     expect(url).toBe('/generate-prompt')
     expect(JSON.parse(options.body)).toEqual({ model: 'llama8b', scenario: SCENARIO })
@@ -112,7 +110,6 @@ describe('App', () => {
 
     const button = screen.getByRole('button', { name: /generate prompt/i })
     await user.click(button)
-    // Button is disabled during generation; forced clicks must not refire.
     button.disabled = false
     await user.click(button).catch(() => {})
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -154,7 +151,6 @@ describe('App', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(/usage limit has been reached/i)
-    // The form is usable again.
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /generate prompt/i })).toBeEnabled(),
     )
@@ -162,7 +158,6 @@ describe('App', () => {
 
   it('copies the generated prompt to the clipboard', async () => {
     const user = userEvent.setup()
-    // Override after setup(): user-event installs its own clipboard stub.
     const writeText = vi.fn(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
@@ -185,7 +180,6 @@ describe('App', () => {
 
   it('handles clipboard failure gracefully', async () => {
     const user = userEvent.setup()
-    // Override after setup(): user-event installs its own clipboard/execCommand stubs.
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: vi.fn(() => Promise.reject(new Error('denied'))) },
       configurable: true,

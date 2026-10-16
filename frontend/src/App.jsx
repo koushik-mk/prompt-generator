@@ -24,7 +24,7 @@ export default function App() {
   }
 
   const handleSubmit = async () => {
-    if (inFlightRef.current) return // prevent duplicate submissions
+    if (inFlightRef.current) return
 
     const error = validateScenario(scenario)
     if (error) {

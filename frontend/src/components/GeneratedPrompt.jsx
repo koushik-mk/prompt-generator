@@ -5,7 +5,6 @@ async function copyText(text) {
     await navigator.clipboard.writeText(text)
     return
   }
-  // Fallback for browsers without the async clipboard API.
   const helper = document.createElement('textarea')
   helper.value = text
   helper.setAttribute('readonly', '')

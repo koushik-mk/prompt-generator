@@ -10,8 +10,6 @@ export default function PromptForm({
   onScenarioChange,
   onSubmit,
 }) {
-  // Enabled unless a generation is running; submitting an empty scenario
-  // surfaces an inline validation error instead of being silently blocked.
   const canSubmit = !isGenerating
 
   return (

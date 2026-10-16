@@ -4,8 +4,6 @@
   padding: 3rem 1.25rem 3.5rem;
 }
 
-/* ---------- Header ---------- */
-
 .app-header {
   text-align: center;
   margin-bottom: 2.25rem;
@@ -28,8 +26,6 @@
   color: var(--muted);
   font-size: 1.02rem;
 }
-
-/* ---------- Form card ---------- */
 
 .prompt-form {
   background: var(--surface);
@@ -122,8 +118,6 @@
   font-weight: 550;
 }
 
-/* ---------- Buttons ---------- */
-
 .generate-button,
 .copy-button {
   font: inherit;
@@ -164,8 +158,6 @@
   font-size: 0.9rem;
 }
 
-/* ---------- Loading ---------- */
-
 .loading-indicator {
   display: flex;
   align-items: center;
@@ -191,8 +183,6 @@
   }
 }
 
-/* ---------- Error ---------- */
-
 .error-message {
   margin-top: 1.5rem;
   background: var(--error-bg);
@@ -203,8 +193,6 @@
   font-size: 0.95rem;
   animation: slide-in 0.2s ease;
 }
-
-/* ---------- Generated prompt ---------- */
 
 .generated-prompt {
   margin-top: 1.75rem;
@@ -282,16 +270,12 @@
   color: var(--success-text);
 }
 
-/* ---------- Footer ---------- */
-
 .app-footer {
   margin-top: 3rem;
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
 }
-
-/* ---------- Mobile ---------- */
 
 @media (max-width: 600px) {
   .app {

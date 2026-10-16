@@ -1,11 +1,7 @@
 export const MAX_SCENARIO_LENGTH = 5000
 
-/**
- * Frontend validation for user experience. The backend is authoritative
- * and applies the same rules independently.
- *
- * Returns an error message string, or null when the scenario is valid.
- */
+/** Frontend UX validation; the backend is authoritative. Returns an error
+ * message string, or null when the scenario is valid. */
 export function validateScenario(scenario) {
   if (typeof scenario !== 'string' || scenario.trim() === '') {
     return 'Please describe the task you need a prompt for.'

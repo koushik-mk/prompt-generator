@@ -21,8 +21,6 @@ async def generate(body_text, ai=None):
     return await handle_request("POST", GENERATE_PATH, body_text, get_binding)
 
 
-# --- Success paths -----------------------------------------------------------
-
 
 async def test_valid_request_llama8b():
     ai = FakeAIBinding(responses={"response": "Role: Act as a customer support specialist..."})
@@ -49,8 +47,6 @@ async def test_scenario_is_trimmed():
     assert status == 200
     assert "Write an email." in ai.calls[0]["payload"]["messages"][1]["content"]
 
-
-# --- Validation failures -----------------------------------------------------
 
 
 async def test_empty_scenario():
@@ -124,8 +120,6 @@ async def test_oversized_request_body():
     assert ai.calls == []
 
 
-# --- Routing ------------------------------------------------------------------
-
 
 async def test_wrong_method_returns_405():
     for method in ("GET", "PUT", "DELETE"):
@@ -161,8 +155,6 @@ async def test_missing_ai_binding_returns_503_after_validation():
     assert status == 503
     assert payload["error"]["code"] == "AI_UNAVAILABLE"
 
-
-# --- AI failure mapping -------------------------------------------------------
 
 
 async def test_empty_ai_response_returns_502():
@@ -211,8 +203,6 @@ async def test_provider_failure_returns_502():
     assert payload["error"]["code"] == "AI_PROVIDER_ERROR"
 
 
-# --- Prompt injection ---------------------------------------------------------
-
 
 async def test_injection_attempt_does_not_alter_system_prompt():
     injection = (
@@ -224,10 +214,7 @@ async def test_injection_attempt_does_not_alter_system_prompt():
     status, payload = await generate(body, ai)
     assert status == 200
     messages = ai.calls[0]["payload"]["messages"]
-    # System message is byte-identical to the constant: scenario content
-    # cannot modify the generator's objective.
     assert messages[0]["content"] == SYSTEM_PROMPT
-    # The injection text is quarantined inside the user-message data block.
     user_content = messages[1]["content"]
     assert injection in user_content
     assert "<scenario>" in user_content

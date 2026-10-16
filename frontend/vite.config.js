@@ -8,8 +8,7 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/tests/setup.js',
     css: false,
-    // Pin the API base URL so a developer's .env.local cannot change
-    // test expectations (tests always exercise the same-origin default).
+    // Pinned so a developer .env.local cannot alter test expectations.
     env: {
       VITE_API_BASE_URL: '',
     },
